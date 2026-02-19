@@ -274,40 +274,159 @@ export async function updateFileContent(owner, repo, path, content, sha, message
  * @param {string} sha — current SHA for conflict detection
  */
 export async function deleteFile(owner, repo, path, sha, message, branch = 'main') {
-    throw new Error('Not implemented — available in Phase 3');
+    const result = await ghFetch(`/repos/${owner}/${repo}/contents/${path}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, sha, branch })
+    });
+    invalidateTree(owner, repo);
+    return result;
 }
 
 /**
- * Rename a file (delete at old path + create at new path).
+ * Rename a file (fetch content at old path → create at new path → delete old).
  */
 export async function renameFile(owner, repo, oldPath, newPath, message, branch = 'main') {
-    throw new Error('Not implemented — available in Phase 3');
+    // Fetch the file content + SHA at the old path
+    const file = await ghFetch(`/repos/${owner}/${repo}/contents/${oldPath}?ref=${branch}`);
+
+    // Create at new path
+    await ghFetch(`/repos/${owner}/${repo}/contents/${newPath}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            message,
+            content: file.content.replace(/\n/g, ''),
+            branch
+        })
+    });
+
+    // Delete at old path
+    await ghFetch(`/repos/${owner}/${repo}/contents/${oldPath}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: `Remove old path: ${oldPath}`, sha: file.sha, branch })
+    });
+
+    invalidateTree(owner, repo);
 }
 
 /**
- * Move a file to a different folder.
+ * Move a file to a different folder (same as rename, just different path).
  */
 export async function moveFile(owner, repo, oldPath, newPath, message, branch = 'main') {
-    throw new Error('Not implemented — available in Phase 3');
+    return renameFile(owner, repo, oldPath, newPath, message, branch);
 }
 
 /**
  * Create a folder (via .gitkeep placeholder).
  */
 export async function createFolder(owner, repo, path, branch = 'main') {
-    throw new Error('Not implemented — available in Phase 3');
+    const encoded = btoa('');
+    await ghFetch(`/repos/${owner}/${repo}/contents/${path}/.gitkeep`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            message: `Create folder: ${path} via Clarity`,
+            content: encoded,
+            branch
+        })
+    });
+    invalidateTree(owner, repo);
 }
 
 /**
  * Rename a folder (batch via Git Trees API — single commit).
+ * Remaps all files under oldPath to newPath in one commit.
  */
 export async function renameFolder(owner, repo, oldPath, newPath, message, branch = 'main') {
-    throw new Error('Not implemented — available in Phase 3');
+    const treeChanges = [];
+
+    // Get full tree to find files under oldPath
+    const treeData = await ghFetch(`/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`);
+    const oldPrefix = oldPath.endsWith('/') ? oldPath : oldPath + '/';
+    const newPrefix = newPath.endsWith('/') ? newPath : newPath + '/';
+
+    for (const item of treeData.tree) {
+        if (item.type === 'blob' && item.path.startsWith(oldPrefix)) {
+            // Remove old path entry
+            treeChanges.push({ path: item.path, mode: item.mode, type: 'blob', sha: null });
+            // Add new path entry
+            const relativePath = item.path.slice(oldPrefix.length);
+            treeChanges.push({ path: newPrefix + relativePath, mode: item.mode, type: 'blob', sha: item.sha });
+        }
+    }
+
+    if (treeChanges.length === 0) return;
+
+    await createTreeCommit(owner, repo, branch, treeChanges, message);
+    invalidateTree(owner, repo);
 }
 
 /**
  * Delete a folder and all its contents (batch via Git Trees API — single commit).
  */
 export async function deleteFolder(owner, repo, path, message, branch = 'main') {
-    throw new Error('Not implemented — available in Phase 3');
+    const treeChanges = [];
+
+    const treeData = await ghFetch(`/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`);
+    const prefix = path.endsWith('/') ? path : path + '/';
+
+    for (const item of treeData.tree) {
+        if (item.type === 'blob' && item.path.startsWith(prefix)) {
+            treeChanges.push({ path: item.path, mode: item.mode, type: 'blob', sha: null });
+        }
+    }
+
+    if (treeChanges.length === 0) return;
+
+    await createTreeCommit(owner, repo, branch, treeChanges, message);
+    invalidateTree(owner, repo);
+}
+
+/**
+ * Helper: create a tree + commit for batch operations.
+ * treeChanges is an array of { path, mode, type, sha } — sha: null means delete.
+ */
+async function createTreeCommit(owner, repo, branch, treeChanges, message) {
+    // 1. Get the current commit SHA for the branch
+    const refData = await ghFetch(`/repos/${owner}/${repo}/git/ref/heads/${branch}`);
+    const currentCommitSha = refData.object.sha;
+
+    // 2. Get the tree SHA from the current commit
+    const commitData = await ghFetch(`/repos/${owner}/${repo}/git/commits/${currentCommitSha}`);
+    const baseTreeSha = commitData.tree.sha;
+
+    // 3. Build the new tree (entries with sha: null are deletions)
+    const treeEntries = treeChanges.map(change => {
+        if (change.sha === null) {
+            // Deletion: omit sha, set mode to indicate removal
+            return { path: change.path, mode: change.mode, type: change.type, sha: null };
+        }
+        return { path: change.path, mode: change.mode, type: change.type, sha: change.sha };
+    });
+
+    const newTree = await ghFetch(`/repos/${owner}/${repo}/git/trees`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ base_tree: baseTreeSha, tree: treeEntries })
+    });
+
+    // 4. Create a new commit pointing to the new tree
+    const newCommit = await ghFetch(`/repos/${owner}/${repo}/git/commits`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            message,
+            tree: newTree.sha,
+            parents: [currentCommitSha]
+        })
+    });
+
+    // 5. Update the branch ref to point to the new commit
+    await ghFetch(`/repos/${owner}/${repo}/git/refs/heads/${branch}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sha: newCommit.sha })
+    });
 }

@@ -2,6 +2,7 @@
 
 import { getRepoSettings } from './settings.js';
 import { uploadFile, fetchRepoTree, getCachedTree } from './github.js';
+import { openFileActionMenu, openFolderActionMenu, startNewFolder } from './filemanager.js';
 
 // Utilities (inline to avoid circular dependency with app.js)
 function showToast(message, type = 'info', duration = 3000) {
@@ -103,14 +104,23 @@ function renderCategories(library, activeCategory) {
     library.categories.forEach(cat => {
         const isActive = activeCategory === cat.path;
         html += `
-            <a class="library-category-item ${isActive ? 'active' : ''}"
-               href="#/library/${encodeURIComponent(cat.path)}" data-category="${cat.path}">
-                <svg class="library-category-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                </svg>
-                <span class="library-category-name">${cat.name}</span>
-                <span class="library-category-count">${cat.fileCount}</span>
-            </a>
+            <div class="library-category-row">
+                <a class="library-category-item ${isActive ? 'active' : ''}"
+                   href="#/library/${encodeURIComponent(cat.path)}" data-category="${cat.path}">
+                    <svg class="library-category-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <span class="library-category-name">${cat.name}</span>
+                    <span class="library-category-count">${cat.fileCount}</span>
+                </a>
+                <button class="fm-dots-btn fm-folder-dots" data-folder="${cat.path}" title="Folder actions">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="5" r="1"></circle>
+                        <circle cx="12" cy="12" r="1"></circle>
+                        <circle cx="12" cy="19" r="1"></circle>
+                    </svg>
+                </button>
+            </div>
         `;
     });
 
@@ -125,7 +135,35 @@ function renderCategories(library, activeCategory) {
         `;
     }
 
+    // Add "New folder" button at bottom
+    html += `
+        <button class="fm-new-folder-btn" id="newFolderBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            New folder
+        </button>
+    `;
+
     libraryCategories.innerHTML = html;
+
+    // Wire up "New folder" button
+    const newFolderBtn = libraryCategories.querySelector('#newFolderBtn');
+    if (newFolderBtn) {
+        newFolderBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            startNewFolder();
+        });
+    }
+
+    // Wire up folder action menus
+    libraryCategories.querySelectorAll('.fm-folder-dots').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const folder = btn.getAttribute('data-folder');
+            openFolderActionMenu(e, folder);
+        });
+    });
 
     // On mobile, clicking a category auto-closes sidebar
     libraryCategories.querySelectorAll('.library-category-item').forEach(item => {
@@ -214,20 +252,29 @@ function renderFileList(library, activeCategory, loading = false, error = null) 
         const showFolder = !activeCategory && folderPath;
 
         html += `
-            <a class="library-file-item" href="#/read/${encodeURIComponent(file.path)}">
-                <div class="library-file-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                        <polyline points="14 2 14 8 20 8"></polyline>
-                        <line x1="16" y1="13" x2="8" y2="13"></line>
-                        <line x1="16" y1="17" x2="8" y2="17"></line>
+            <div class="library-file-row" data-filepath="${file.path}" data-sha="${file.sha}">
+                <a class="library-file-item" href="#/read/${encodeURIComponent(file.path)}">
+                    <div class="library-file-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                        </svg>
+                    </div>
+                    <div class="library-file-info">
+                        <span class="library-file-name">${displayName}</span>
+                        ${showFolder ? `<span class="library-file-path">${folderPath}</span>` : ''}
+                    </div>
+                </a>
+                <button class="fm-dots-btn" title="Actions" data-filepath="${file.path}" data-sha="${file.sha}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="5" r="1"></circle>
+                        <circle cx="12" cy="12" r="1"></circle>
+                        <circle cx="12" cy="19" r="1"></circle>
                     </svg>
-                </div>
-                <div class="library-file-info">
-                    <span class="library-file-name">${displayName}</span>
-                    ${showFolder ? `<span class="library-file-path">${folderPath}</span>` : ''}
-                </div>
-            </a>
+                </button>
+            </div>
         `;
     });
 
@@ -241,6 +288,15 @@ function renderFileList(library, activeCategory, loading = false, error = null) 
     `;
 
     libraryContent.innerHTML = html;
+
+    // Wire up three-dot action menus on file rows
+    libraryContent.querySelectorAll('.fm-dots-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const filepath = btn.getAttribute('data-filepath');
+            const sha = btn.getAttribute('data-sha');
+            openFileActionMenu(e, { path: filepath, sha }, activeCategory);
+        });
+    });
 
     // Wire up drag-and-drop upload in library
     setupLibraryDragDrop();

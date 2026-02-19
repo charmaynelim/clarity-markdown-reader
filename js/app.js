@@ -5,6 +5,7 @@ import { isAuthenticated, handleAuthCallback, startAuth } from './auth.js';
 import { fetchRepoTree, getCachedTree, fetchFileContent } from './github.js';
 import { openSettings, getRepoSettings } from './settings.js';
 import { initLibrary, renderLibraryView, showUploadModal } from './library.js';
+import { initFileManager } from './filemanager.js';
 
 // ---------------------------------------------------------------------------
 // DOM references
@@ -383,6 +384,13 @@ export function showToast(message, type = 'info', duration = 3000) {
 
 initReader();
 initLibrary();
+initFileManager((freshFiles) => {
+    // Refresh library view with fresh data after file management operations
+    const route = parseRoute();
+    if (route.view === 'library') {
+        renderLibraryView(freshFiles, route.category);
+    }
+});
 
 async function init() {
     // 1. Check for OAuth callback params (returning from GitHub)
