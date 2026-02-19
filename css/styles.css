@@ -1219,11 +1219,15 @@ body {
 }
 
 /* Landing page typography overrides */
-.view-landing h1,
+.view-landing h1 {
+    font-family: 'Merriweather', Georgia, serif;
+    font-weight: 700;
+}
+
 .view-landing h2,
 .view-landing h3 {
-    font-family: 'Spectral', Georgia, serif;
-    font-weight: 700;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 800;
 }
 
 .view-landing p,
@@ -1255,8 +1259,9 @@ body {
 }
 
 .landing-logo {
+    font-family: 'Merriweather', Georgia, serif;
     font-size: 18px;
-    font-weight: 600;
+    font-weight: 700;
     color: var(--text-primary);
     letter-spacing: -0.02em;
 }
@@ -1318,7 +1323,7 @@ body {
 }
 
 .landing-description {
-    font-size: 18px;
+    font-size: 16px;
     line-height: 1.7;
     color: var(--text-secondary);
     margin-bottom: 40px;
@@ -1472,7 +1477,7 @@ body {
     }
 
     .landing-title {
-        font-size: 28px;
+        font-size: 32px;
     }
 
     .landing-description {
@@ -1509,7 +1514,7 @@ body {
     }
 
     .landing-title {
-        font-size: 24px;
+        font-size: 32px;
     }
 }
 
