@@ -441,50 +441,7 @@ function renderFileListContent(library, activeCategory, loading = false, error =
         return;
     }
 
-    // Build recent section + file list
     let html = '';
-
-    // Show "Recent" section only on "All Documents" view (no active category)
-    if (!activeCategory) {
-        const recents = getRecentFiles();
-        // Filter to files that still exist in the tree
-        const validRecents = recents.filter(r => currentFiles.some(f => f.path === r.path));
-
-        if (validRecents.length > 0) {
-            // "Continue reading" prompt for most recent file
-            const mostRecent = validRecents[0];
-            const mostRecentName = mostRecent.path.split('/').pop().replace(/\.(md|markdown)$/i, '');
-
-            html += `
-                <a class="continue-reading" href="#/read/${encodeURIComponent(mostRecent.path)}">
-                    <span class="continue-reading-label">Continue reading</span>
-                    <span class="continue-reading-name">${escapeHtml(mostRecentName)}</span>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="9 18 15 12 9 6"></polyline>
-                    </svg>
-                </a>
-            `;
-
-            // Show up to 5 recent files as a compact list
-            if (validRecents.length > 1) {
-                html += `<div class="recent-section">`;
-                html += `<div class="recent-section-header">Recently opened</div>`;
-                html += `<div class="recent-list">`;
-                validRecents.slice(0, 5).forEach(r => {
-                    const name = r.path.split('/').pop().replace(/\.(md|markdown)$/i, '');
-                    const folder = r.path.includes('/') ? r.path.split('/').slice(0, -1).join('/') : null;
-                    html += `
-                        <a class="recent-item" href="#/read/${encodeURIComponent(r.path)}">
-                            <span class="recent-item-name">${escapeHtml(name)}</span>
-                            ${folder ? `<span class="recent-item-path">${escapeHtml(folder)}</span>` : ''}
-                        </a>
-                    `;
-                });
-                html += `</div></div>`;
-            }
-        }
-    }
-
     html += buildFileListHtml(files, activeCategory);
     fileArea.innerHTML = html;
     wireUpFileActions(fileArea, activeCategory);

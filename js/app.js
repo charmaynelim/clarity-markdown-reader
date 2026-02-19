@@ -320,7 +320,8 @@ function showView(route) {
         backBtn.style.display = hasRepo ? 'flex' : 'none';
         refreshBtn.style.display = 'none';
         uploadBtn.style.display = 'none';
-        fileInputWrapper.style.display = 'block';
+        // Hide Open File button when reading a GitHub-sourced file
+        fileInputWrapper.style.display = route.filePath ? 'none' : 'block';
         // exportPdfBtn shown by renderMarkdown when content loads
 
         if (route.filePath) {
