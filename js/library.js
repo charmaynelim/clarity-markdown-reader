@@ -112,7 +112,7 @@ export function initLibrary() {
  * Build a structured library from the flat file list.
  * Groups files by top-level folder. Root-level files go to "Uncategorized".
  */
-function buildLibrary(files) {
+function buildLibrary(files, knownFolders = []) {
     const categories = {};
     const uncategorized = [];
 
@@ -128,6 +128,13 @@ function buildLibrary(files) {
             categories[folder].push(file);
         }
     });
+
+    // Include known folders that have no .md files (e.g. newly created empty folders)
+    for (const folder of knownFolders) {
+        if (!categories[folder]) {
+            categories[folder] = [];
+        }
+    }
 
     // Sort category names alphabetically
     const sortedCategories = Object.keys(categories)
@@ -156,7 +163,12 @@ export function renderLibraryView(files, activeCategory = null, loading = false,
     // Reset search when category changes
     searchQuery = '';
 
-    const library = buildLibrary(files);
+    // Get known folders from cache so empty folders appear in sidebar
+    const settings = getRepoSettings();
+    const cachedTree = settings ? getCachedTree(settings.owner, settings.repo) : null;
+    const knownFolders = cachedTree?.folders || [];
+
+    const library = buildLibrary(files, knownFolders);
 
     renderCategories(library, activeCategory);
     renderFileList(library, activeCategory, loading, error);

@@ -76,9 +76,9 @@ function getUsername() {
 /**
  * Cache a repo's file tree in localStorage.
  */
-export function cacheTree(owner, repo, tree, treeSha) {
+export function cacheTree(owner, repo, tree, treeSha, folders = []) {
     const key = `clarity:${getUsername()}:tree:${owner}/${repo}`;
-    localStorage.setItem(key, JSON.stringify({ sha: treeSha, files: tree, cachedAt: Date.now() }));
+    localStorage.setItem(key, JSON.stringify({ sha: treeSha, files: tree, folders, cachedAt: Date.now() }));
 }
 
 /**
@@ -162,10 +162,17 @@ export async function fetchRepoTree(owner, repo, branch = 'main') {
             size: item.size
         }));
 
-    // Cache the tree
-    cacheTree(owner, repo, files, data.sha);
+    // Extract all top-level folder names (so empty folders are visible)
+    const folders = [...new Set(
+        data.tree
+            .filter(item => item.type === 'tree' && !item.path.includes('/'))
+            .map(item => item.path)
+    )].sort();
 
-    return { sha: data.sha, files };
+    // Cache the tree (including folders)
+    cacheTree(owner, repo, files, data.sha, folders);
+
+    return { sha: data.sha, files, folders };
 }
 
 /**

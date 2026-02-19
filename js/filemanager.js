@@ -371,13 +371,16 @@ function openMoveModal(file, currentCategory) {
     const tree = getCachedTree(settings.owner, settings.repo);
     if (!tree) { showToast('No cached tree — please refresh', 'error'); return; }
 
-    // Build folder list from tree
+    // Build folder list from tree (including known empty folders)
     const folders = new Set();
     tree.files.forEach(f => {
         if (f.path.includes('/')) {
             folders.add(f.path.split('/')[0]);
         }
     });
+    if (tree.folders) {
+        tree.folders.forEach(f => folders.add(f));
+    }
 
     const filename = file.path.split('/').pop();
     const currentFolder = file.path.includes('/') ? file.path.split('/')[0] : '';
@@ -581,19 +584,44 @@ export function startNewFolder() {
         const name = input.value.trim().replace(/[\/\\]/g, '');
         if (!name) return;
 
-        // Check if folder already exists
+        // Check if folder already exists (check both file paths and known folders)
         const settings = getSettings();
         const tree = getCachedTree(settings.owner, settings.repo);
-        if (tree && tree.files.some(f => f.path.startsWith(name + '/'))) {
+        if (tree && (
+            tree.files.some(f => f.path.startsWith(name + '/')) ||
+            (tree.folders && tree.folders.includes(name))
+        )) {
             showToast(`Folder "${name}" already exists`, 'error');
             return;
         }
 
         optimisticAction({
             apply: () => {
-                // Optimistically add folder to sidebar (will be replaced on refresh)
+                // Optimistically add folder to sidebar
+                const catEl = document.getElementById('libraryCategories');
+                if (!catEl) return;
+                const newFolderBtn = catEl.querySelector('.fm-new-folder-btn');
+                if (!newFolderBtn) return;
+
+                const row = document.createElement('div');
+                row.className = 'library-category-row';
+                row.setAttribute('data-optimistic-folder', name);
+                row.innerHTML = `
+                    <a class="library-category-item"
+                       href="#/library/${encodeURIComponent(name)}" data-category="${name}">
+                        <svg class="library-category-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                        <span class="library-category-name">${name}</span>
+                        <span class="library-category-count">0</span>
+                    </a>
+                `;
+                catEl.insertBefore(row, newFolderBtn);
             },
-            revert: () => {},
+            revert: () => {
+                const row = document.querySelector(`[data-optimistic-folder="${name}"]`);
+                if (row) row.remove();
+            },
             action: () => createFolder(settings.owner, settings.repo, name, settings.branch),
             successMsg: `Created folder: ${name}`
         });
