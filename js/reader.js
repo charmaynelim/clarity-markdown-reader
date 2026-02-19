@@ -392,7 +392,7 @@ export function initReader() {
         if (file) loadFile(file);
     });
 
-    // Drop zone
+    // Drop zone (in-app welcome state)
     dropZone.addEventListener('click', () => fileInput.click());
 
     dropZone.addEventListener('dragover', (e) => {
@@ -409,16 +409,6 @@ export function initReader() {
         dropZone.classList.remove('drag-over');
         const file = e.dataTransfer.files[0];
         if (file) loadFile(file);
-    });
-
-    // Global drag and drop
-    document.addEventListener('dragover', (e) => e.preventDefault());
-    document.addEventListener('drop', (e) => {
-        e.preventDefault();
-        const file = e.dataTransfer.files[0];
-        if (file && (file.name.endsWith('.md') || file.name.endsWith('.markdown') || file.name.endsWith('.txt'))) {
-            loadFile(file);
-        }
     });
 
     // Export PDF

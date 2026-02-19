@@ -223,7 +223,42 @@ export async function listUserRepos() {
  * @param {string} branch
  */
 export async function uploadFile(owner, repo, path, content, message, branch = 'main') {
-    throw new Error('Not implemented — available in Phase 2');
+    // Base64 encode the content (UTF-8 safe)
+    const encoded = btoa(
+        new Uint8Array(new TextEncoder().encode(content))
+            .reduce((data, byte) => data + String.fromCharCode(byte), '')
+    );
+
+    // Check if file already exists (need its SHA for update)
+    let existingSha = null;
+    try {
+        const existing = await ghFetch(`/repos/${owner}/${repo}/contents/${path}?ref=${branch}`);
+        existingSha = existing.sha;
+    } catch (e) {
+        // 404 = file doesn't exist, that's fine for create
+        if (e.status !== 404) throw e;
+    }
+
+    const body = {
+        message,
+        content: encoded,
+        branch
+    };
+
+    if (existingSha) {
+        body.sha = existingSha;
+    }
+
+    const result = await ghFetch(`/repos/${owner}/${repo}/contents/${path}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+
+    // Invalidate tree cache so next load gets fresh data
+    invalidateTree(owner, repo);
+
+    return result;
 }
 
 /**

@@ -11,29 +11,159 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 </head>
 <body>
-    <div class="app outline-collapsed" id="app">
+
+    <!-- ===== LANDING VIEW (unauthenticated visitors) ===== -->
+    <div class="view-landing" id="viewLanding" style="display: none;">
+        <header class="landing-header">
+            <div class="landing-header-left">
+                <svg class="landing-logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                </svg>
+                <span class="landing-logo">Clarity</span>
+            </div>
+            <div class="landing-header-right">
+                <button class="theme-toggle" id="landingThemeToggle" title="Toggle dark/light mode">
+                    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+                <button class="landing-signin-btn" id="landingSignIn">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+                        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                    </svg>
+                    Sign in with GitHub
+                </button>
+            </div>
+        </header>
+
+        <main class="landing-main">
+            <section class="landing-hero">
+                <h1 class="landing-title">Your markdown documents,<br>beautifully organized</h1>
+                <p class="landing-description">A personal document library backed by GitHub. Browse, upload, and read your markdown files with a clean, focused interface.</p>
+                <button class="landing-cta" id="landingCta">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                    </svg>
+                    Get started with GitHub
+                </button>
+            </section>
+
+            <section class="landing-features">
+                <div class="landing-feature">
+                    <div class="landing-feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                        </svg>
+                    </div>
+                    <h3>Clean Reading</h3>
+                    <p>Beautiful typography and distraction-free reading with outline navigation, scroll spy, and PDF export.</p>
+                </div>
+                <div class="landing-feature">
+                    <div class="landing-feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                    </div>
+                    <h3>Organized by Folder</h3>
+                    <p>Your repo's folder structure becomes your document categories. No lock-in, no proprietary format.</p>
+                </div>
+                <div class="landing-feature">
+                    <div class="landing-feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+                            <line x1="12" y1="18" x2="12.01" y2="18"></line>
+                        </svg>
+                    </div>
+                    <h3>Any Device</h3>
+                    <p>Works on desktop and mobile. Your library is always accessible, cached locally for speed.</p>
+                </div>
+                <div class="landing-feature">
+                    <div class="landing-feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                        </svg>
+                    </div>
+                    <h3>Dark & Light</h3>
+                    <p>Switch between dark and light themes with a single click. Your preference is saved automatically.</p>
+                </div>
+            </section>
+
+            <section class="landing-try">
+                <h2 class="landing-try-title">Try it now</h2>
+                <p class="landing-try-description">No account needed — drop a markdown file to preview the reading experience.</p>
+                <div class="drop-zone landing-drop-zone" id="landingDropZone">
+                    <p class="drop-zone-text">
+                        <strong>Drop your .md file here</strong><br>
+                        or click to browse
+                    </p>
+                </div>
+                <input type="file" id="landingFileInput" class="file-input" accept=".md,.markdown,.txt" style="display: none;">
+            </section>
+        </main>
+
+        <footer class="landing-footer">
+            <p>Built with vanilla HTML, CSS & JavaScript.</p>
+        </footer>
+    </div>
+
+    <!-- ===== APP SHELL (Library + Reader views) ===== -->
+    <div class="app outline-collapsed" id="app" style="display: none;">
         <!-- Mobile Overlay -->
         <div class="mobile-overlay" id="mobileOverlay"></div>
 
-        <!-- Outline Panel -->
+        <!-- Sidebar: Library categories OR Reader outline -->
         <aside class="outline-panel">
-            <div class="outline-header">
-                <span class="outline-title">Outline</span>
+            <!-- Library Sidebar -->
+            <div id="librarySidebar" style="display: none;">
+                <div class="outline-header">
+                    <span class="outline-title">Library</span>
+                </div>
+                <nav class="library-categories" id="libraryCategories">
+                    <!-- Rendered by library.js -->
+                </nav>
             </div>
-            <nav class="outline-content" id="outlineContent">
-                <!-- Outline items will be generated here -->
-            </nav>
+            <!-- Reader Sidebar (Outline) -->
+            <div id="readerSidebar">
+                <div class="outline-header">
+                    <span class="outline-title">Outline</span>
+                </div>
+                <nav class="outline-content" id="outlineContent">
+                    <!-- Outline items generated by reader.js -->
+                </nav>
+            </div>
         </aside>
 
         <!-- Main Content -->
         <main class="main-content">
             <header class="top-bar">
                 <div class="top-bar-left">
-                    <button class="toggle-outline" id="toggleOutline" title="Toggle Outline (⌘ + /)">
+                    <button class="toggle-outline" id="toggleOutline" title="Toggle sidebar (⌘ + /)">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="3" y1="6" x2="21" y2="6"></line>
                             <line x1="3" y1="12" x2="15" y2="12"></line>
                             <line x1="3" y1="18" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                    <button class="back-btn" id="backBtn" style="display: none;" title="Back to Library">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="15 18 9 12 15 6"></polyline>
                         </svg>
                     </button>
                     <span class="document-title" id="documentTitle">Clarity</span>
@@ -55,7 +185,17 @@
                             <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
                         </svg>
                     </button>
-                    <div class="file-input-wrapper">
+                    <!-- Library: Upload button -->
+                    <button class="upload-btn" id="uploadBtn" style="display: none;" title="Upload file">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <span>Upload</span>
+                    </button>
+                    <!-- Reader: Open File (local) -->
+                    <div class="file-input-wrapper" id="fileInputWrapper">
                         <input type="file" class="file-input" id="fileInput" accept=".md,.markdown,.txt">
                         <button class="open-file-btn">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -82,9 +222,17 @@
                 </div>
             </header>
 
-            <div class="reader-container">
+            <!-- Library View -->
+            <div class="library-container" id="viewLibrary" style="display: none;">
+                <div class="library-content" id="libraryContent">
+                    <!-- Rendered by library.js -->
+                </div>
+            </div>
+
+            <!-- Reader View -->
+            <div class="reader-container" id="viewReader">
                 <article class="reader" id="reader">
-                    <!-- Welcome State -->
+                    <!-- Welcome State (fallback for local file drop) -->
                     <div class="welcome-state" id="welcomeState">
                         <div class="welcome-icon">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -105,6 +253,12 @@
                         </div>
                     </div>
 
+                    <!-- Loading State -->
+                    <div class="reader-loading" id="readerLoading" style="display: none;">
+                        <div class="reader-loading-spinner"></div>
+                        <p>Loading document...</p>
+                    </div>
+
                     <!-- Markdown Content (hidden initially) -->
                     <div class="markdown-content" id="markdownContent" style="display: none;"></div>
                 </article>
@@ -116,6 +270,9 @@
         <span class="shortcut"><kbd>⌘</kbd> + <kbd>/</kbd> Toggle outline</span>
         <span class="shortcut"><kbd>⌘</kbd> + <kbd>O</kbd> Open file</span>
     </div>
+
+    <!-- Toast container for notifications -->
+    <div class="toast-container" id="toastContainer"></div>
 
     <script type="module" src="js/app.js"></script>
 </body>
