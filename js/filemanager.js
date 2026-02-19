@@ -6,6 +6,7 @@ import {
     createFolder, renameFolder, deleteFolder,
     fetchRepoTree, getCachedTree, cacheTree
 } from './github.js';
+import { updateRecentFilePath, removeRecentFile } from './library.js';
 
 // ---------------------------------------------------------------------------
 // State
@@ -323,15 +324,21 @@ function startInlineRename(file, currentCategory) {
                 nameEl.textContent = originalName;
                 targetItem.setAttribute('href', `#/read/${encodeURIComponent(oldPath)}`);
             },
-            action: () => renameFile(settings.owner, settings.repo, oldPath, newPath,
-                `Renamed ${filename} → ${newName} via Clarity`, settings.branch),
+            action: async () => {
+                await renameFile(settings.owner, settings.repo, oldPath, newPath,
+                    `Renamed ${filename} → ${newName} via Clarity`, settings.branch);
+                updateRecentFilePath(oldPath, newPath);
+            },
             successMsg: `Renamed ${filename} → ${newName}`,
             undoAction: () => {
                 optimisticAction({
                     apply: () => {},
                     revert: () => {},
-                    action: () => renameFile(settings.owner, settings.repo, newPath, oldPath,
-                        `Undo rename: ${newName} → ${filename} via Clarity`, settings.branch),
+                    action: async () => {
+                        await renameFile(settings.owner, settings.repo, newPath, oldPath,
+                            `Undo rename: ${newName} → ${filename} via Clarity`, settings.branch);
+                        updateRecentFilePath(newPath, oldPath);
+                    },
                     successMsg: `Undid rename — restored ${filename}`
                 });
             }
@@ -439,15 +446,21 @@ function openMoveModal(file, currentCategory) {
                 const row = document.querySelector(`.library-file-row[data-filepath="${oldPath}"]`);
                 if (row) row.style.display = '';
             },
-            action: () => moveFile(settings.owner, settings.repo, oldPath, newPath,
-                `Moved ${filename} to ${destLabel} via Clarity`, settings.branch),
+            action: async () => {
+                await moveFile(settings.owner, settings.repo, oldPath, newPath,
+                    `Moved ${filename} to ${destLabel} via Clarity`, settings.branch);
+                updateRecentFilePath(oldPath, newPath);
+            },
             successMsg: `Moved ${filename} to ${destLabel}`,
             undoAction: () => {
                 optimisticAction({
                     apply: () => {},
                     revert: () => {},
-                    action: () => moveFile(settings.owner, settings.repo, newPath, oldPath,
-                        `Undo move: ${filename} back to ${currentFolder || 'root'} via Clarity`, settings.branch),
+                    action: async () => {
+                        await moveFile(settings.owner, settings.repo, newPath, oldPath,
+                            `Undo move: ${filename} back to ${currentFolder || 'root'} via Clarity`, settings.branch);
+                        updateRecentFilePath(newPath, oldPath);
+                    },
                     successMsg: `Undid move — restored ${filename}`
                 });
             }
@@ -510,8 +523,11 @@ function confirmDeleteFile(file, currentCategory) {
                 const row = document.querySelector(`.library-file-row[data-filepath="${file.path}"]`);
                 if (row) row.style.display = '';
             },
-            action: () => deleteFile(settings.owner, settings.repo, file.path, file.sha,
-                `Deleted ${filename} via Clarity`, settings.branch),
+            action: async () => {
+                await deleteFile(settings.owner, settings.repo, file.path, file.sha,
+                    `Deleted ${filename} via Clarity`, settings.branch);
+                removeRecentFile(file.path);
+            },
             successMsg: `Deleted ${filename}`
         });
     });

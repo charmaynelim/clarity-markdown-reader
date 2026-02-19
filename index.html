@@ -138,6 +138,9 @@
                 <nav class="library-categories" id="libraryCategories">
                     <!-- Rendered by library.js -->
                 </nav>
+                <div class="sidebar-footer" id="sidebarFooter">
+                    <span class="sync-status" id="syncStatus"></span>
+                </div>
             </div>
             <!-- Reader Sidebar (Outline) -->
             <div id="readerSidebar">
@@ -183,6 +186,13 @@
                             <line x1="21" y1="12" x2="23" y2="12"></line>
                             <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
                             <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                        </svg>
+                    </button>
+                    <!-- Library: Refresh button -->
+                    <button class="refresh-btn" id="refreshBtn" style="display: none;" title="Refresh library">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="23 4 23 10 17 10"></polyline>
+                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
                         </svg>
                     </button>
                     <!-- Library: Upload button -->
@@ -267,8 +277,9 @@
     </div>
 
     <div class="shortcuts-hint">
-        <span class="shortcut"><kbd>⌘</kbd> + <kbd>/</kbd> Toggle outline</span>
-        <span class="shortcut"><kbd>⌘</kbd> + <kbd>O</kbd> Open file</span>
+        <span class="shortcut"><kbd>⌘</kbd><kbd>K</kbd> Search</span>
+        <span class="shortcut"><kbd>↑</kbd><kbd>↓</kbd> Navigate</span>
+        <span class="shortcut"><kbd>⌘</kbd><kbd>/</kbd> Sidebar</span>
     </div>
 
     <!-- Toast container for notifications -->

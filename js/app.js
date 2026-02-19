@@ -4,7 +4,7 @@ import { initReader, renderMarkdown } from './reader.js';
 import { isAuthenticated, handleAuthCallback, startAuth } from './auth.js';
 import { fetchRepoTree, getCachedTree, fetchFileContent } from './github.js';
 import { openSettings, getRepoSettings } from './settings.js';
-import { initLibrary, renderLibraryView, showUploadModal } from './library.js';
+import { initLibrary, renderLibraryView, showUploadModal, focusSearch, clearSearch, trackRecentFile, handleLibraryKeyNav, resetKeyboardFocus } from './library.js';
 import { initFileManager } from './filemanager.js';
 
 // ---------------------------------------------------------------------------
@@ -26,6 +26,7 @@ const fileInput = document.getElementById('fileInput');
 const gearBtn = document.getElementById('gearBtn');
 const backBtn = document.getElementById('backBtn');
 const uploadBtn = document.getElementById('uploadBtn');
+const refreshBtn = document.getElementById('refreshBtn');
 const fileInputWrapper = document.getElementById('fileInputWrapper');
 const exportPdfBtn = document.getElementById('exportPdfBtn');
 const documentTitle = document.getElementById('documentTitle');
@@ -83,18 +84,74 @@ mobileOverlay.addEventListener('click', () => {
 // ---------------------------------------------------------------------------
 
 document.addEventListener('keydown', (e) => {
+    // ⌘/ — Toggle sidebar
     if ((e.metaKey || e.ctrlKey) && e.key === '/') {
         e.preventDefault();
         if (currentView === 'library' || currentView === 'reader') {
             toggleSidebar();
         }
+        return;
     }
+    // ⌘O — Open local file
     if ((e.metaKey || e.ctrlKey) && e.key === 'o') {
         e.preventDefault();
         fileInput.click();
+        return;
     }
-    if (e.key === 'Escape' && !appShell.classList.contains('outline-collapsed')) {
-        appShell.classList.add('outline-collapsed');
+    // ⌘K — Focus search in library
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        if (currentView === 'library') {
+            focusSearch();
+            resetKeyboardFocus();
+        }
+        return;
+    }
+    // ⌘[ — Back to library from reader
+    if ((e.metaKey || e.ctrlKey) && e.key === '[' && currentView === 'reader') {
+        e.preventDefault();
+        navigateTo('#/library');
+        return;
+    }
+    // / — Focus search in library (only when not in input)
+    if (e.key === '/' && currentView === 'library' &&
+        !e.metaKey && !e.ctrlKey && !e.altKey &&
+        !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) {
+        e.preventDefault();
+        focusSearch();
+        resetKeyboardFocus();
+        return;
+    }
+    // Escape — Close sidebar, clear search, or go back from reader
+    if (e.key === 'Escape') {
+        // Close sidebar if open
+        if (!appShell.classList.contains('outline-collapsed')) {
+            appShell.classList.add('outline-collapsed');
+            return;
+        }
+        // In library: clear search and reset keyboard focus
+        if (currentView === 'library') {
+            clearSearch();
+            resetKeyboardFocus();
+        }
+        // In reader: go back to library
+        if (currentView === 'reader' && isAuthenticated() && getRepoSettings()) {
+            navigateTo('#/library');
+        }
+        return;
+    }
+    // Backspace — Back to library from reader (when not in input)
+    if (e.key === 'Backspace' && currentView === 'reader' &&
+        !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) {
+        e.preventDefault();
+        if (isAuthenticated() && getRepoSettings()) {
+            navigateTo('#/library');
+        }
+        return;
+    }
+    // Library keyboard navigation (↑, ↓, Enter, Delete)
+    if (currentView === 'library') {
+        handleLibraryKeyNav(e);
     }
 });
 
@@ -166,6 +223,7 @@ function showView(route) {
 
         // Top bar adjustments for library
         backBtn.style.display = 'none';
+        refreshBtn.style.display = 'flex';
         uploadBtn.style.display = 'flex';
         fileInputWrapper.style.display = 'none';
         exportPdfBtn.style.display = 'none';
@@ -187,6 +245,7 @@ function showView(route) {
         // Top bar adjustments for reader
         const hasRepo = isAuthenticated() && getRepoSettings();
         backBtn.style.display = hasRepo ? 'flex' : 'none';
+        refreshBtn.style.display = 'none';
         uploadBtn.style.display = 'none';
         fileInputWrapper.style.display = 'block';
         // exportPdfBtn shown by renderMarkdown when content loads
@@ -225,22 +284,107 @@ async function loadLibrary(category) {
     let tree = getCachedTree(owner, repo);
     if (tree) {
         renderLibraryView(tree.files, category);
+        updateSyncStatus(tree.cachedAt);
+
         // Background refresh
-        fetchRepoTree(owner, repo, branch).then(freshTree => {
-            if (freshTree.sha !== tree.sha) {
-                renderLibraryView(freshTree.files, category);
-            }
-        }).catch(() => {});
+        backgroundSync(owner, repo, branch, tree, category);
     } else {
         // No cache — show loading then fetch
         renderLibraryView([], category, true);
         try {
             tree = await fetchRepoTree(owner, repo, branch);
             renderLibraryView(tree.files, category);
+            updateSyncStatus(Date.now());
         } catch (err) {
-            renderLibraryView([], category, false, err.message);
+            if (!navigator.onLine) {
+                renderLibraryView([], category, false, 'You appear to be offline. Connect to the internet and try again.');
+            } else {
+                renderLibraryView([], category, false, err.message);
+            }
         }
     }
+}
+
+async function backgroundSync(owner, repo, branch, cachedTree, category) {
+    try {
+        const freshTree = await fetchRepoTree(owner, repo, branch);
+        updateSyncStatus(Date.now());
+
+        if (freshTree.sha !== cachedTree.sha) {
+            // Count changes
+            const oldPaths = new Set(cachedTree.files.map(f => f.path));
+            const newPaths = new Set(freshTree.files.map(f => f.path));
+            const added = freshTree.files.filter(f => !oldPaths.has(f.path)).length;
+            const removed = cachedTree.files.filter(f => !newPaths.has(f.path)).length;
+            const modified = freshTree.files.filter(f => {
+                const old = cachedTree.files.find(o => o.path === f.path);
+                return old && old.sha !== f.sha;
+            }).length;
+
+            const parts = [];
+            if (added) parts.push(`${added} added`);
+            if (removed) parts.push(`${removed} removed`);
+            if (modified) parts.push(`${modified} modified`);
+            const summary = parts.length ? parts.join(', ') : 'changes detected';
+
+            // Re-render with fresh data
+            const route = parseRoute();
+            if (route.view === 'library') {
+                renderLibraryView(freshTree.files, route.category);
+            }
+            showToast(`Library updated — ${summary}`, 'info', 4000);
+        }
+    } catch (err) {
+        if (!navigator.onLine) {
+            showToast('Offline — showing cached library', 'info', 4000);
+        }
+        // Silently fail on other errors — cached data is still shown
+    }
+}
+
+function updateSyncStatus(timestamp) {
+    const el = document.getElementById('syncStatus');
+    if (!el) return;
+    if (!timestamp) {
+        el.textContent = '';
+        return;
+    }
+    const update = () => {
+        const diff = Date.now() - timestamp;
+        const mins = Math.floor(diff / 60000);
+        if (mins < 1) {
+            el.textContent = 'Last synced: just now';
+        } else if (mins === 1) {
+            el.textContent = 'Last synced: 1 minute ago';
+        } else if (mins < 60) {
+            el.textContent = `Last synced: ${mins} minutes ago`;
+        } else {
+            el.textContent = `Last synced: ${new Date(timestamp).toLocaleTimeString()}`;
+        }
+    };
+    update();
+    // Update every 30 seconds
+    clearInterval(window._syncInterval);
+    window._syncInterval = setInterval(update, 30000);
+}
+
+function manualRefresh() {
+    const repoSettings = getRepoSettings();
+    if (!repoSettings) return;
+
+    const { owner, repo, branch } = repoSettings;
+    const route = parseRoute();
+
+    showToast('Refreshing...', 'info', 1500);
+    fetchRepoTree(owner, repo, branch).then(freshTree => {
+        updateSyncStatus(Date.now());
+        if (route.view === 'library') {
+            renderLibraryView(freshTree.files, route.category);
+        }
+        showToast('Library refreshed', 'success', 2000);
+    }).catch(err => {
+        showToast(`Refresh failed: ${err.message}`, 'error', 4000);
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -254,24 +398,60 @@ async function loadGitHubFile(filePath) {
     const { owner, repo, branch } = repoSettings;
     const filename = filePath.split('/').pop();
 
-    // Show loading
+    // Show loading bar
     welcomeState.style.display = 'none';
     markdownContent.style.display = 'none';
-    readerLoading.style.display = 'flex';
+    readerLoading.style.display = 'none';
     documentTitle.textContent = filename.replace(/\.(md|markdown)$/i, '');
     document.title = `${documentTitle.textContent} — Clarity`;
 
+    // Add loading bar at top
+    let loadingBar = document.querySelector('.reader-loading-bar');
+    if (!loadingBar) {
+        loadingBar = document.createElement('div');
+        loadingBar.className = 'reader-loading-bar';
+        document.body.appendChild(loadingBar);
+    }
+    loadingBar.style.display = 'block';
+
     try {
         const file = await fetchFileContent(owner, repo, filePath, branch);
-        readerLoading.style.display = 'none';
+        loadingBar.style.display = 'none';
+        trackRecentFile(filePath);
         renderMarkdown(file.content, file.name);
     } catch (err) {
-        readerLoading.style.display = 'none';
+        loadingBar.style.display = 'none';
+
+        // Specific error messages based on status code
+        let title = 'Failed to load document';
+        let message = err.message;
+        let showRetry = false;
+
+        if (err.status === 401) {
+            title = 'Session expired';
+            message = 'Your authentication has expired. Please sign in again.';
+        } else if (err.status === 404) {
+            title = 'File not found';
+            message = 'This file is no longer in the repository. It may have been moved or deleted.';
+        } else if (err.status === 403) {
+            title = 'Access denied';
+            message = err.message; // Includes rate limit info if applicable
+        } else if (!navigator.onLine) {
+            title = "Can't reach GitHub";
+            message = 'You appear to be offline. Check your connection and try again.';
+            showRetry = true;
+        } else if (err.message.includes('fetch') || err.message.includes('network') || err.message.includes('Failed')) {
+            title = "Can't reach GitHub";
+            message = 'Network error — check your connection and try again.';
+            showRetry = true;
+        }
+
         markdownContent.style.display = 'block';
         markdownContent.innerHTML = `
             <div class="reader-error">
-                <h2>Failed to load document</h2>
-                <p>${err.message}</p>
+                <h2>${title}</h2>
+                <p>${message}</p>
+                ${showRetry ? `<button class="back-to-library-btn" onclick="window.location.reload()">Retry</button>` : ''}
                 <button class="back-to-library-btn" onclick="window.location.hash='#/library'">Back to Library</button>
             </div>
         `;
@@ -356,6 +536,10 @@ document.addEventListener('drop', (e) => {
 
 uploadBtn.addEventListener('click', () => {
     showUploadModal();
+});
+
+refreshBtn.addEventListener('click', () => {
+    manualRefresh();
 });
 
 // ---------------------------------------------------------------------------

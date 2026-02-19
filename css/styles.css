@@ -1474,7 +1474,7 @@ body {
 /* Library Category Sidebar */
 .library-categories {
     padding: 16px 0;
-    height: calc(100vh - 80px);
+    height: calc(100vh - 80px - 44px);
     overflow-y: auto;
 }
 
@@ -1529,6 +1529,341 @@ body {
 .library-category-item.active .library-category-count {
     background: var(--accent-soft);
     color: var(--accent);
+}
+
+/* Sidebar Footer (sync status) */
+.sidebar-footer {
+    padding: 12px 24px;
+    border-top: 1px solid var(--border);
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg-secondary);
+}
+
+.sync-status {
+    font-size: 11px;
+    color: var(--text-tertiary);
+}
+
+/* Refresh Button */
+.refresh-btn {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+}
+
+.refresh-btn:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.refresh-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Search Bar */
+.search-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 20px;
+    transition: border-color 0.2s ease;
+}
+
+.search-bar:focus-within {
+    border-color: var(--accent);
+}
+
+.search-bar-icon {
+    width: 18px;
+    height: 18px;
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+}
+
+.search-bar:focus-within .search-bar-icon {
+    color: var(--accent);
+}
+
+.search-input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    color: var(--text-primary);
+    min-width: 0;
+}
+
+.search-input::placeholder {
+    color: var(--text-tertiary);
+}
+
+.search-clear-btn {
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--text-tertiary);
+    transition: all 0.15s ease;
+}
+
+.search-clear-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.search-clear-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+.search-shortcut {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 3px 7px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+    pointer-events: none;
+}
+
+/* Search Results */
+.search-results-group {
+    margin-bottom: 16px;
+}
+
+.search-results-header {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    padding: 8px 4px 6px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+}
+
+/* Skeleton Loaders */
+.skeleton-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.skeleton-file-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: 10px;
+}
+
+.skeleton-icon {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    border-radius: 8px;
+    background: var(--bg-tertiary);
+    animation: skeletonPulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-text-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.skeleton-text {
+    height: 14px;
+    border-radius: 4px;
+    background: var(--bg-tertiary);
+    animation: skeletonPulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-text-name {
+    width: 60%;
+}
+
+.skeleton-text-path {
+    width: 35%;
+    height: 10px;
+}
+
+/* Stagger the animation for each row */
+.skeleton-file-row:nth-child(2) .skeleton-icon,
+.skeleton-file-row:nth-child(2) .skeleton-text { animation-delay: 0.1s; }
+.skeleton-file-row:nth-child(3) .skeleton-icon,
+.skeleton-file-row:nth-child(3) .skeleton-text { animation-delay: 0.2s; }
+.skeleton-file-row:nth-child(4) .skeleton-icon,
+.skeleton-file-row:nth-child(4) .skeleton-text { animation-delay: 0.3s; }
+.skeleton-file-row:nth-child(5) .skeleton-icon,
+.skeleton-file-row:nth-child(5) .skeleton-text { animation-delay: 0.4s; }
+.skeleton-file-row:nth-child(6) .skeleton-icon,
+.skeleton-file-row:nth-child(6) .skeleton-text { animation-delay: 0.5s; }
+
+@keyframes skeletonPulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.8; }
+}
+
+/* Reader Loading Bar */
+.reader-loading-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    z-index: 1000;
+    overflow: hidden;
+}
+
+.reader-loading-bar::after {
+    content: '';
+    display: block;
+    width: 40%;
+    height: 100%;
+    background: var(--accent);
+    border-radius: 0 2px 2px 0;
+    animation: loadingSlide 1.2s ease-in-out infinite;
+}
+
+@keyframes loadingSlide {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(350%); }
+}
+
+/* Continue Reading */
+.continue-reading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: var(--accent-soft);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    text-decoration: none;
+    color: var(--text-primary);
+    margin-bottom: 20px;
+    transition: all 0.15s ease;
+}
+
+.continue-reading:hover {
+    background: var(--accent);
+    color: var(--bg-primary);
+}
+
+.continue-reading:hover .continue-reading-label {
+    color: var(--bg-primary);
+    opacity: 0.8;
+}
+
+.continue-reading-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--accent);
+    white-space: nowrap;
+}
+
+.continue-reading-name {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.continue-reading svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    color: var(--accent);
+}
+
+.continue-reading:hover svg {
+    color: var(--bg-primary);
+}
+
+/* Recent Section */
+.recent-section {
+    margin-bottom: 20px;
+}
+
+.recent-section-header {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    padding: 0 4px 8px;
+}
+
+.recent-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.recent-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.15s ease;
+}
+
+.recent-item:hover {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+}
+
+.recent-item-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+.recent-item-path {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    white-space: nowrap;
+}
+
+/* File list area */
+.library-file-area {
+    min-height: 100px;
 }
 
 /* File List */
@@ -1642,6 +1977,11 @@ body {
 }
 
 .library-error {
+    color: #ef4444;
+}
+
+.library-error-icon {
+    background: rgba(239, 68, 68, 0.1);
     color: #ef4444;
 }
 
@@ -1881,6 +2221,10 @@ body {
     background: var(--accent);
 }
 
+.reader-error .back-to-library-btn + .back-to-library-btn {
+    margin-left: 10px;
+}
+
 /* =========================================================================
    Toast Notifications
    ========================================================================= */
@@ -1948,6 +2292,26 @@ body {
 .library-file-row .library-file-item {
     flex: 1;
     min-width: 0;
+}
+
+/* Keyboard-focused file row */
+.library-file-row.kb-focused {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+    border-radius: 10px;
+}
+
+.library-file-row.kb-focused .library-file-item {
+    background: var(--bg-secondary);
+}
+
+.library-file-row.kb-focused .library-file-icon {
+    color: var(--accent);
+    background: var(--accent-soft);
+}
+
+.library-file-row.kb-focused .fm-dots-btn {
+    opacity: 1;
 }
 
 /* Three-dot action button */

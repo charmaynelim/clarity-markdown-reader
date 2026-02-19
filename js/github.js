@@ -38,7 +38,15 @@ async function ghFetch(path, options = {}) {
         throw Object.assign(new Error('Forbidden'), { status: 403 });
     }
     if (res.status === 404) {
-        throw Object.assign(new Error('Not found'), { status: 404 });
+        throw Object.assign(new Error('Not found — the repository or file may have been removed'), { status: 404 });
+    }
+    if (res.status === 409) {
+        throw Object.assign(new Error('Conflict — the file was modified elsewhere. Refresh and try again.'), { status: 409 });
+    }
+    if (res.status === 422) {
+        const body = await res.json().catch(() => ({}));
+        const msg = body.message || 'Validation failed';
+        throw Object.assign(new Error(`Couldn't complete the operation: ${msg}`), { status: 422 });
     }
     if (!res.ok) {
         throw Object.assign(new Error(`GitHub API error: ${res.status}`), { status: res.status });
