@@ -338,14 +338,31 @@ export async function moveFile(owner, repo, oldPath, newPath, message, branch = 
  */
 export async function createFolder(owner, repo, path, branch = 'main') {
     const encoded = btoa('');
-    await ghFetch(`/repos/${owner}/${repo}/contents/${path}/.gitkeep`, {
+    const gitkeepPath = `${path}/.gitkeep`;
+
+    // Check if .gitkeep already exists (e.g. from a previous attempt)
+    let existingSha = null;
+    try {
+        const existing = await ghFetch(`/repos/${owner}/${repo}/contents/${gitkeepPath}?ref=${branch}`);
+        existingSha = existing.sha;
+    } catch (e) {
+        if (e.status !== 404) throw e;
+    }
+
+    const body = {
+        message: `Create folder: ${path} via Clarity`,
+        content: encoded,
+        branch
+    };
+
+    if (existingSha) {
+        body.sha = existingSha;
+    }
+
+    await ghFetch(`/repos/${owner}/${repo}/contents/${gitkeepPath}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            message: `Create folder: ${path} via Clarity`,
-            content: encoded,
-            branch
-        })
+        body: JSON.stringify(body)
     });
     invalidateTree(owner, repo);
 }
