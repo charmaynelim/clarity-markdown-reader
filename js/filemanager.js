@@ -559,13 +559,22 @@ export function startNewFolder() {
     inputWrapper.className = 'fm-new-folder-input';
     inputWrapper.innerHTML = `
         <input type="text" class="fm-inline-rename" placeholder="folder-name">
+        <button type="button" class="fm-new-folder-confirm" title="Create folder">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        </button>
     `;
     categoriesEl.appendChild(inputWrapper);
 
     const input = inputWrapper.querySelector('input');
+    const confirmBtn = inputWrapper.querySelector('.fm-new-folder-confirm');
     input.focus();
 
+    let finished = false;
+
     function finish(save) {
+        if (finished) return;
+        finished = true;
+
         inputWrapper.remove();
         if (!save) return;
 
@@ -595,6 +604,10 @@ export function startNewFolder() {
         if (e.key === 'Escape') { finish(false); }
     });
     input.addEventListener('blur', () => finish(true));
+
+    // Prevent blur race: mousedown on button fires before blur
+    confirmBtn.addEventListener('mousedown', (e) => e.preventDefault());
+    confirmBtn.addEventListener('click', () => finish(true));
 }
 
 // ---------------------------------------------------------------------------

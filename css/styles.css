@@ -2639,11 +2639,40 @@ body {
 
 /* New Folder Inline Input (sidebar) */
 .fm-new-folder-input {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     padding: 6px 16px;
 }
 
 .fm-new-folder-input input {
-    width: 100%;
+    flex: 1;
+    min-width: 0;
+}
+
+.fm-new-folder-confirm {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent);
+    color: var(--bg-primary);
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+    flex-shrink: 0;
+}
+
+.fm-new-folder-confirm:hover {
+    opacity: 0.8;
+}
+
+.fm-new-folder-confirm svg {
+    width: 16px;
+    height: 16px;
 }
 
 /* =========================================================================
