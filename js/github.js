@@ -288,11 +288,14 @@ export async function updateFileContent(owner, repo, path, content, sha, message
  * Delete a file.
  * @param {string} sha — current SHA for conflict detection
  */
-export async function deleteFile(owner, repo, path, sha, message, branch = 'main') {
+export async function deleteFile(owner, repo, path, _sha, message, branch = 'main') {
+    // Always fetch fresh SHA from the API — caller's SHA may be from stale cache
+    const current = await ghFetch(`/repos/${owner}/${repo}/contents/${path}?ref=${branch}`);
+
     const result = await ghFetch(`/repos/${owner}/${repo}/contents/${path}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, sha, branch })
+        body: JSON.stringify({ message, sha: current.sha, branch })
     });
     invalidateTree(owner, repo);
     return result;
@@ -302,25 +305,40 @@ export async function deleteFile(owner, repo, path, sha, message, branch = 'main
  * Rename a file (fetch content at old path → create at new path → delete old).
  */
 export async function renameFile(owner, repo, oldPath, newPath, message, branch = 'main') {
-    // Fetch the file content + SHA at the old path
+    // Fetch the file content + SHA at the old path (fresh from API)
     const file = await ghFetch(`/repos/${owner}/${repo}/contents/${oldPath}?ref=${branch}`);
 
-    // Create at new path
+    // Check if a file already exists at the destination (same pattern as createFolder BUG-001 fix)
+    let destSha = null;
+    try {
+        const existing = await ghFetch(`/repos/${owner}/${repo}/contents/${newPath}?ref=${branch}`);
+        destSha = existing.sha;
+    } catch (e) {
+        if (e.status !== 404) throw e;
+    }
+
+    // Create at new path — include destSha only if overwriting an existing file
+    const createBody = {
+        message,
+        content: file.content.replace(/\n/g, ''),
+        branch
+    };
+    if (destSha) {
+        createBody.sha = destSha;
+    }
+
     await ghFetch(`/repos/${owner}/${repo}/contents/${newPath}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            message,
-            content: file.content.replace(/\n/g, ''),
-            branch
-        })
+        body: JSON.stringify(createBody)
     });
 
-    // Delete at old path
+    // Delete at old path — re-fetch SHA to account for the commit created above
+    const current = await ghFetch(`/repos/${owner}/${repo}/contents/${oldPath}?ref=${branch}`);
     await ghFetch(`/repos/${owner}/${repo}/contents/${oldPath}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: `Remove old path: ${oldPath}`, sha: file.sha, branch })
+        body: JSON.stringify({ message: `Remove old path: ${oldPath}`, sha: current.sha, branch })
     });
 
     invalidateTree(owner, repo);
@@ -372,26 +390,23 @@ export async function createFolder(owner, repo, path, branch = 'main') {
  * Remaps all files under oldPath to newPath in one commit.
  */
 export async function renameFolder(owner, repo, oldPath, newPath, message, branch = 'main') {
-    const treeChanges = [];
-
-    // Get full tree to find files under oldPath
-    const treeData = await ghFetch(`/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`);
     const oldPrefix = oldPath.endsWith('/') ? oldPath : oldPath + '/';
     const newPrefix = newPath.endsWith('/') ? newPath : newPath + '/';
 
-    for (const item of treeData.tree) {
-        if (item.type === 'blob' && item.path.startsWith(oldPrefix)) {
-            // Remove old path entry
-            treeChanges.push({ path: item.path, mode: item.mode, type: 'blob', sha: null });
-            // Add new path entry
-            const relativePath = item.path.slice(oldPrefix.length);
-            treeChanges.push({ path: newPrefix + relativePath, mode: item.mode, type: 'blob', sha: item.sha });
+    await createTreeCommit(owner, repo, branch, (treeData) => {
+        const changes = [];
+        for (const item of treeData.tree) {
+            if (item.type === 'blob' && item.path.startsWith(oldPrefix)) {
+                // Remove old path entry
+                changes.push({ path: item.path, mode: item.mode, type: 'blob', sha: null });
+                // Add new path entry
+                const relativePath = item.path.slice(oldPrefix.length);
+                changes.push({ path: newPrefix + relativePath, mode: item.mode, type: 'blob', sha: item.sha });
+            }
         }
-    }
+        return changes;
+    }, message);
 
-    if (treeChanges.length === 0) return;
-
-    await createTreeCommit(owner, repo, branch, treeChanges, message);
     invalidateTree(owner, repo);
 }
 
@@ -399,66 +414,82 @@ export async function renameFolder(owner, repo, oldPath, newPath, message, branc
  * Delete a folder and all its contents (batch via Git Trees API — single commit).
  */
 export async function deleteFolder(owner, repo, path, message, branch = 'main') {
-    const treeChanges = [];
-
-    const treeData = await ghFetch(`/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`);
     const prefix = path.endsWith('/') ? path : path + '/';
 
-    for (const item of treeData.tree) {
-        if (item.type === 'blob' && item.path.startsWith(prefix)) {
-            treeChanges.push({ path: item.path, mode: item.mode, type: 'blob', sha: null });
-        }
-    }
+    await createTreeCommit(owner, repo, branch, (treeData) => {
+        return treeData.tree
+            .filter(item => item.type === 'blob' && item.path.startsWith(prefix))
+            .map(item => ({ path: item.path, mode: item.mode, type: 'blob', sha: null }));
+    }, message);
 
-    if (treeChanges.length === 0) return;
-
-    await createTreeCommit(owner, repo, branch, treeChanges, message);
     invalidateTree(owner, repo);
 }
 
 /**
  * Helper: create a tree + commit for batch operations.
- * treeChanges is an array of { path, mode, type, sha } — sha: null means delete.
+ * buildTreeChanges(treeData) receives the full recursive tree and returns
+ * an array of { path, mode, type, sha } entries — sha: null means delete.
+ * Tree is fetched from the same commit as the branch ref to avoid stale-SHA
+ * mismatches. Retries up to 3 times on "not a fast forward" conflicts.
  */
-async function createTreeCommit(owner, repo, branch, treeChanges, message) {
-    // 1. Get the current commit SHA for the branch
-    const refData = await ghFetch(`/repos/${owner}/${repo}/git/ref/heads/${branch}`);
-    const currentCommitSha = refData.object.sha;
+async function createTreeCommit(owner, repo, branch, buildTreeChanges, message) {
+    const MAX_RETRIES = 3;
 
-    // 2. Get the tree SHA from the current commit
-    const commitData = await ghFetch(`/repos/${owner}/${repo}/git/commits/${currentCommitSha}`);
-    const baseTreeSha = commitData.tree.sha;
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        // 1. Get the LATEST commit SHA for the branch
+        const refData = await ghFetch(`/repos/${owner}/${repo}/git/ref/heads/${branch}`);
+        const currentCommitSha = refData.object.sha;
 
-    // 3. Build the new tree (entries with sha: null are deletions)
-    const treeEntries = treeChanges.map(change => {
-        if (change.sha === null) {
-            // Deletion: omit sha, set mode to indicate removal
-            return { path: change.path, mode: change.mode, type: change.type, sha: null };
+        // 2. Get the tree SHA from the current commit
+        const commitData = await ghFetch(`/repos/${owner}/${repo}/git/commits/${currentCommitSha}`);
+        const baseTreeSha = commitData.tree.sha;
+
+        // 3. Fetch the full tree from this SAME commit (guarantees consistency)
+        const treeData = await ghFetch(`/repos/${owner}/${repo}/git/trees/${baseTreeSha}?recursive=1`);
+
+        // 4. Let the caller build tree changes from this consistent snapshot
+        const treeChanges = buildTreeChanges(treeData);
+        if (treeChanges.length === 0) return;
+
+        // 5. Build the new tree (entries with sha: null are deletions)
+        const treeEntries = treeChanges.map(change => ({
+            path: change.path,
+            mode: change.mode,
+            type: change.type,
+            sha: change.sha
+        }));
+
+        const newTree = await ghFetch(`/repos/${owner}/${repo}/git/trees`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ base_tree: baseTreeSha, tree: treeEntries })
+        });
+
+        // 6. Create a new commit pointing to the new tree
+        const newCommit = await ghFetch(`/repos/${owner}/${repo}/git/commits`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                message,
+                tree: newTree.sha,
+                parents: [currentCommitSha]
+            })
+        });
+
+        // 7. Update the branch ref — retry on "not a fast forward"
+        try {
+            await ghFetch(`/repos/${owner}/${repo}/git/refs/heads/${branch}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sha: newCommit.sha })
+            });
+            return; // Success
+        } catch (err) {
+            const isConflict = err.status === 422 && /fast.forward/i.test(err.message);
+            if (isConflict && attempt < MAX_RETRIES - 1) {
+                continue; // Retry with fresh data
+            }
+            throw err;
         }
-        return { path: change.path, mode: change.mode, type: change.type, sha: change.sha };
-    });
-
-    const newTree = await ghFetch(`/repos/${owner}/${repo}/git/trees`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ base_tree: baseTreeSha, tree: treeEntries })
-    });
-
-    // 4. Create a new commit pointing to the new tree
-    const newCommit = await ghFetch(`/repos/${owner}/${repo}/git/commits`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            message,
-            tree: newTree.sha,
-            parents: [currentCommitSha]
-        })
-    });
-
-    // 5. Update the branch ref to point to the new commit
-    await ghFetch(`/repos/${owner}/${repo}/git/refs/heads/${branch}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sha: newCommit.sha })
-    });
+    }
 }
