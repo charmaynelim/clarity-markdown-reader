@@ -57,3 +57,6 @@ Write a ready-to-paste prompt I can use to kick off the next Claude Code session
 - Include the same working style, error handling, and manual step rules from the original kickoff prompt.
 
 Format it as a code block I can copy directly.
+
+### Design System
+- All UI must follow the Orren Vibes design system defined in `docs/design-system.html`. Read this file before building any new UI component. Match its tokens, colors, spacing, shadows, and component patterns exactly for both light and dark modes.
