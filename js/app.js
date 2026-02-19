@@ -49,6 +49,11 @@ let currentView = null;
 function setTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
     try { localStorage.setItem('clarity-theme', theme); } catch (e) { /* ignore */ }
+    // Update theme-color meta tag for PWA status bar
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (metaTheme) {
+        metaTheme.setAttribute('content', theme === 'dark' ? '#1A1A1A' : '#EBE9E4');
+    }
 }
 
 // Load saved theme preference (default dark)
@@ -78,6 +83,74 @@ toggleOutlineBtn.addEventListener('click', toggleSidebar);
 mobileOverlay.addEventListener('click', () => {
     appShell.classList.add('outline-collapsed');
 });
+
+// ---------------------------------------------------------------------------
+// Touch gestures — swipe from left edge to open sidebar
+// ---------------------------------------------------------------------------
+
+(function initTouchGestures() {
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let isSwiping = false;
+    const EDGE_ZONE = 30;       // px from left edge
+    const SWIPE_THRESHOLD = 60; // px to trigger
+
+    document.addEventListener('touchstart', (e) => {
+        const touch = e.touches[0];
+        if (touch.clientX < EDGE_ZONE && appShell.classList.contains('outline-collapsed')) {
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            isSwiping = true;
+        }
+    }, { passive: true });
+
+    document.addEventListener('touchmove', (e) => {
+        // passive — no preventDefault needed
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+        if (!isSwiping) return;
+        isSwiping = false;
+
+        const touch = e.changedTouches[0];
+        const deltaX = touch.clientX - touchStartX;
+        const deltaY = Math.abs(touch.clientY - touchStartY);
+
+        // Swipe right from left edge — open sidebar (only if mostly horizontal)
+        if (deltaX > SWIPE_THRESHOLD && deltaX > deltaY * 1.5) {
+            appShell.classList.remove('outline-collapsed');
+        }
+    }, { passive: true });
+})();
+
+// ---------------------------------------------------------------------------
+// Pull to refresh in library
+// ---------------------------------------------------------------------------
+
+(function initPullToRefresh() {
+    let startY = 0;
+    let isPulling = false;
+    const PULL_THRESHOLD = 80;
+
+    const libraryEl = document.getElementById('viewLibrary');
+
+    document.addEventListener('touchstart', (e) => {
+        if (currentView !== 'library') return;
+        if (window.scrollY > 5) return; // only when at top
+        startY = e.touches[0].clientY;
+        isPulling = true;
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+        if (!isPulling) return;
+        isPulling = false;
+
+        const deltaY = e.changedTouches[0].clientY - startY;
+        if (deltaY > PULL_THRESHOLD && currentView === 'library' && window.scrollY <= 5) {
+            manualRefresh();
+        }
+    }, { passive: true });
+})();
 
 // ---------------------------------------------------------------------------
 // Keyboard Shortcuts
@@ -563,6 +636,60 @@ export function showToast(message, type = 'info', duration = 3000) {
 }
 
 // ---------------------------------------------------------------------------
+// Offline / Online detection
+// ---------------------------------------------------------------------------
+
+function showOfflineBanner() {
+    if (document.getElementById('offlineBanner')) return;
+    const banner = document.createElement('div');
+    banner.id = 'offlineBanner';
+    banner.className = 'offline-banner';
+    banner.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="1" y1="1" x2="23" y2="23"></line>
+            <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path>
+            <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path>
+            <path d="M10.71 5.05A16 16 0 0 1 22.56 9"></path>
+            <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path>
+            <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+            <line x1="12" y1="20" x2="12.01" y2="20"></line>
+        </svg>
+        You're offline — cached content only
+    `;
+    document.body.prepend(banner);
+}
+
+function hideOfflineBanner() {
+    document.getElementById('offlineBanner')?.remove();
+}
+
+window.addEventListener('offline', () => {
+    showOfflineBanner();
+});
+
+window.addEventListener('online', () => {
+    hideOfflineBanner();
+    showToast('Back online', 'success', 2000);
+    // Auto-refresh library if currently viewing it
+    if (currentView === 'library') {
+        const repoSettings = getRepoSettings();
+        if (repoSettings) {
+            const { owner, repo, branch } = repoSettings;
+            fetchRepoTree(owner, repo, branch).then(freshTree => {
+                updateSyncStatus(Date.now());
+                const route = parseRoute();
+                renderLibraryView(freshTree.files, route.category);
+            }).catch(() => {});
+        }
+    }
+});
+
+// Show banner on load if offline
+if (!navigator.onLine) {
+    showOfflineBanner();
+}
+
+// ---------------------------------------------------------------------------
 // Initialize
 // ---------------------------------------------------------------------------
 
@@ -596,6 +723,11 @@ async function init() {
 
     // 2. Route to the correct view
     handleRouteChange();
+
+    // 3. Register service worker
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
 }
 
 init();

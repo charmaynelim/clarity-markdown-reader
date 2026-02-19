@@ -134,6 +134,14 @@ function getSettings() {
     return settings;
 }
 
+function checkOnline() {
+    if (!navigator.onLine) {
+        showToast('You\'re offline — file operations are disabled', 'error', 3000);
+        return false;
+    }
+    return true;
+}
+
 // ---------------------------------------------------------------------------
 // File Action Menu
 // ---------------------------------------------------------------------------
@@ -142,6 +150,7 @@ export function openFileActionMenu(e, file, currentCategory) {
     e.preventDefault();
     e.stopPropagation();
     closeActionMenu();
+    if (!checkOnline()) return;
 
     const btn = e.currentTarget;
     const menu = document.createElement('div');
@@ -210,6 +219,7 @@ export function openFolderActionMenu(e, folderName) {
     e.preventDefault();
     e.stopPropagation();
     closeActionMenu();
+    if (!checkOnline()) return;
 
     const btn = e.currentTarget;
     const menu = document.createElement('div');
@@ -538,6 +548,7 @@ function confirmDeleteFile(file, currentCategory) {
 // ---------------------------------------------------------------------------
 
 export function startNewFolder() {
+    if (!checkOnline()) return;
     const categoriesEl = document.getElementById('libraryCategories');
     if (!categoriesEl) return;
 

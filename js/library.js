@@ -517,8 +517,13 @@ function renderSearchResults(filtered, query) {
     wireUpFileActions(fileArea, currentCategory);
 }
 
+const LAZY_BATCH = 50;
+const LAZY_THRESHOLD = 100;
+let lazyObserver = null;
+
 /**
  * Build file list HTML (shared between normal and search views).
+ * For lists > LAZY_THRESHOLD, renders in batches via IntersectionObserver.
  */
 function buildFileListHtml(files, activeCategory, showFolderAlways = false) {
     const sorted = [...files].sort((a, b) => {
@@ -527,9 +532,29 @@ function buildFileListHtml(files, activeCategory, showFolderAlways = false) {
         return nameA.localeCompare(nameB);
     });
 
+    // Render all if under threshold
+    const renderCount = sorted.length > LAZY_THRESHOLD ? LAZY_BATCH : sorted.length;
     let html = '<div class="library-file-list">';
+    html += buildFileRowsHtml(sorted.slice(0, renderCount), activeCategory, showFolderAlways);
 
-    sorted.forEach(file => {
+    // Add sentinel for lazy loading more
+    if (sorted.length > renderCount) {
+        html += `<div class="lazy-sentinel" data-rendered="${renderCount}" data-total="${sorted.length}"></div>`;
+    }
+
+    html += '</div>';
+
+    // Store remaining files for lazy loading
+    if (sorted.length > renderCount) {
+        queueLazyLoad(sorted, activeCategory, showFolderAlways);
+    }
+
+    return html;
+}
+
+function buildFileRowsHtml(files, activeCategory, showFolderAlways) {
+    let html = '';
+    files.forEach(file => {
         const filename = file.path.split('/').pop();
         const displayName = filename.replace(/\.(md|markdown)$/i, '');
         const folderPath = file.path.includes('/') ? file.path.split('/').slice(0, -1).join('/') : null;
@@ -561,9 +586,67 @@ function buildFileListHtml(files, activeCategory, showFolderAlways = false) {
             </div>
         `;
     });
-
-    html += '</div>';
     return html;
+}
+
+function queueLazyLoad(allFiles, activeCategory, showFolderAlways) {
+    // Clean up previous observer
+    if (lazyObserver) { lazyObserver.disconnect(); lazyObserver = null; }
+
+    // Use requestAnimationFrame to set up observer after DOM update
+    requestAnimationFrame(() => {
+        const sentinel = document.querySelector('.lazy-sentinel');
+        if (!sentinel) return;
+
+        lazyObserver = new IntersectionObserver((entries) => {
+            for (const entry of entries) {
+                if (!entry.isIntersecting) continue;
+
+                const rendered = parseInt(sentinel.dataset.rendered);
+                const total = parseInt(sentinel.dataset.total);
+                if (rendered >= total) {
+                    lazyObserver.disconnect();
+                    sentinel.remove();
+                    return;
+                }
+
+                const nextBatch = allFiles.slice(rendered, rendered + LAZY_BATCH);
+                const newHtml = buildFileRowsHtml(nextBatch, activeCategory, showFolderAlways);
+
+                // Insert before sentinel
+                sentinel.insertAdjacentHTML('beforebegin', newHtml);
+                sentinel.dataset.rendered = Math.min(rendered + LAZY_BATCH, total);
+
+                // Wire up actions on new rows
+                const fileList = sentinel.closest('.library-file-list');
+                if (fileList) {
+                    const newRows = fileList.querySelectorAll('.library-file-row:not([data-wired])');
+                    wireUpNewRows(newRows, activeCategory);
+                }
+
+                if (parseInt(sentinel.dataset.rendered) >= total) {
+                    lazyObserver.disconnect();
+                    sentinel.remove();
+                }
+            }
+        }, { rootMargin: '200px' });
+
+        lazyObserver.observe(sentinel);
+    });
+}
+
+function wireUpNewRows(rows, activeCategory) {
+    rows.forEach(row => {
+        row.setAttribute('data-wired', '1');
+        const btn = row.querySelector('.fm-dots-btn');
+        if (btn) {
+            btn.addEventListener('click', (e) => {
+                const filepath = btn.getAttribute('data-filepath');
+                const sha = btn.getAttribute('data-sha');
+                openFileActionMenu(e, { path: filepath, sha }, activeCategory);
+            });
+        }
+    });
 }
 
 /**
@@ -725,6 +808,10 @@ function setupLibraryDragDrop() {
  * Show upload modal with destination picker.
  */
 export function showUploadModal() {
+    if (!navigator.onLine) {
+        showToast('You\'re offline — uploads are disabled', 'error', 3000);
+        return;
+    }
     // Create file input and trigger it
     const input = document.createElement('input');
     input.type = 'file';

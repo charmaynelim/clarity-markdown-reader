@@ -105,6 +105,7 @@ export function renderMarkdown(content, filename) {
 
     addHeadingIds();
     setupScrollSpy();
+    lazyLoadImages();
 }
 
 function loadFile(file) {
@@ -189,6 +190,14 @@ function setupScrollSpy() {
     });
 
     headings.forEach((heading) => observer.observe(heading));
+}
+
+function lazyLoadImages() {
+    const images = markdownContent.querySelectorAll('img');
+    images.forEach(img => {
+        img.setAttribute('loading', 'lazy');
+        img.setAttribute('decoding', 'async');
+    });
 }
 
 function exportToPdf() {
