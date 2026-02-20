@@ -762,15 +762,20 @@ body {
         gap: 8px;
     }
 
-    /* 44px minimum tap targets on mobile */
+    /* App shell icon buttons: 36px on mobile */
     .toggle-outline,
     .theme-toggle,
     .gear-btn,
     .back-btn,
     .refresh-btn {
-        width: 44px;
-        height: 44px;
-        min-width: 44px;
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+    }
+
+    /* Hide Export PDF on mobile */
+    .export-pdf-btn {
+        display: none !important;
     }
 
     .reader-container {
@@ -1411,9 +1416,20 @@ body {
 .landing-try {
     text-align: center;
     padding: 60px 48px 80px;
-    border-top: 1px solid var(--border);
     width: 100%;
     max-width: 960px;
+    position: relative;
+}
+
+.landing-try::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100vw;
+    height: 1px;
+    background: var(--border);
 }
 
 .view-landing .landing-try-title {
@@ -1468,6 +1484,12 @@ body {
         display: none;
     }
 
+    .view-landing .theme-toggle {
+        width: 38px;
+        height: 38px;
+        min-width: 38px;
+    }
+
     .landing-hero {
         padding: 60px 20px 50px;
     }
@@ -1491,6 +1513,7 @@ body {
 
     .landing-value-props {
         flex-direction: column;
+        align-items: flex-start;
         gap: 16px;
         padding: 0 20px 50px;
     }
