@@ -68,8 +68,14 @@
             </section>
 
             <div class="landing-hero-image">
-                <img class="hero-img hero-img-light" src="assets/hero-light.png" alt="Clarity app screenshot" width="960" height="600">
-                <img class="hero-img hero-img-dark" src="assets/hero-dark.png" alt="Clarity app screenshot" width="960" height="600">
+                <picture class="hero-img hero-img-light">
+                    <source media="(max-width: 768px)" srcset="assets/hero-mobile-light.png">
+                    <img src="assets/hero-light.png" alt="Clarity app screenshot" width="960" height="600">
+                </picture>
+                <picture class="hero-img hero-img-dark">
+                    <source media="(max-width: 768px)" srcset="assets/hero-mobile-dark.png">
+                    <img src="assets/hero-dark.png" alt="Clarity app screenshot" width="960" height="600">
+                </picture>
             </div>
 
             <section class="landing-value-props">
