@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180">
-  <rect width="180" height="180" rx="22" fill="#1A1A1A"/>
-  <g transform="translate(44, 34)" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M64 4H26a8 8 0 0 0-8 8v90a8 8 0 0 0 8 8h52a8 8 0 0 0 8-8V22z"/>
-    <polyline points="64 4 64 26 86 26"/>
-    <line x1="68" y1="52" x2="34" y2="52"/>
-    <line x1="68" y1="72" x2="34" y2="72"/>
-  </g>
-</svg>

@@ -1,7 +1,7 @@
 // sw.js — Service Worker for Clarity PWA
 // Cache-first for app shell, network-first for GitHub API
 
-const CACHE_VERSION = 'clarity-v9';
+const CACHE_VERSION = 'clarity-v10';
 const APP_SHELL = [
     '/',
     '/index.html',
@@ -14,9 +14,9 @@ const APP_SHELL = [
     '/js/reader.js',
     '/js/settings.js',
     '/manifest.json',
-    '/icons/icon-192.svg',
-    '/icons/icon-512.svg',
-    '/icons/icon-180.svg'
+    '/assets/icons/icon-192.png',
+    '/assets/icons/icon-512.png',
+    '/assets/icons/icon-180.png'
 ];
 
 const API_CACHE = 'clarity-api-v1';

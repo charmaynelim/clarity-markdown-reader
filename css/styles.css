@@ -888,17 +888,6 @@ body {
         gap: 10px;
     }
 
-    .toggle-outline {
-        width: 44px;
-        height: 44px;
-        min-width: 44px;
-    }
-
-    .toggle-outline svg {
-        width: 16px;
-        height: 16px;
-    }
-
     .document-title {
         font-size: 13px;
     }
@@ -1453,6 +1442,10 @@ body {
     margin: 0 auto;
 }
 
+/* Try-it heading text toggle (desktop vs mobile) */
+.try-title-mobile { display: none; }
+.try-title-desktop { display: inline; }
+
 /* Footer */
 .landing-footer {
     padding: 24px 48px;
@@ -1513,13 +1506,22 @@ body {
 
     .landing-value-props {
         flex-direction: column;
-        align-items: flex-start;
+        align-items: center;
         gap: 16px;
         padding: 0 20px 50px;
     }
 
     .landing-try {
-        padding: 40px 20px 60px;
+        padding: 80px 20px;
+    }
+
+    .try-title-desktop { display: none; }
+    .try-title-mobile { display: inline; }
+
+    .landing-try .landing-drop-zone,
+    .landing-try .landing-try-description,
+    .landing-try #landingFileInput {
+        display: none !important;
     }
 
     .landing-footer {
