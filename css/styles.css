@@ -1360,7 +1360,6 @@ body {
 /* Hero Image */
 .landing-hero-image {
     padding: 0 80px 60px;
-    max-width: 960px;
     width: 100%;
     animation: fadeIn 0.6s ease;
 }
@@ -1368,8 +1367,7 @@ body {
 .hero-img {
     width: 100%;
     height: auto;
-    border-radius: 40px;
-    box-shadow: var(--shadow-lg);
+    border-radius: 0;
 }
 
 .hero-img-light { display: block; }
@@ -1418,7 +1416,7 @@ body {
     max-width: 960px;
 }
 
-.landing-try-title {
+.view-landing .landing-try-title {
     font-family: 'Merriweather', Georgia, serif;
     font-size: 24px;
     font-weight: 700;
@@ -1489,10 +1487,6 @@ body {
 
     .landing-hero-image {
         padding: 0 16px 40px;
-    }
-
-    .hero-img {
-        border-radius: 24px;
     }
 
     .landing-value-props {
