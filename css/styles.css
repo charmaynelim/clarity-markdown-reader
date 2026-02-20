@@ -1523,7 +1523,6 @@ body {
     .try-title-mobile { display: inline; }
 
     .landing-try .landing-drop-zone,
-    .landing-try .landing-try-description,
     .landing-try #landingFileInput {
         display: none !important;
     }

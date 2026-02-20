@@ -1,7 +1,7 @@
 // sw.js — Service Worker for Clarity PWA
 // Cache-first for app shell, network-first for GitHub API
 
-const CACHE_VERSION = 'clarity-v11';
+const CACHE_VERSION = 'clarity-v12';
 const APP_SHELL = [
     '/',
     '/index.html',
